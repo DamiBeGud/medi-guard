@@ -1,0 +1,60 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+
+# IDEs and editors
+*.iml
+.idea/caches/
+.idea/libraries/
+.idea/modules.xml
+.idea/workspace.xml
+.idea/navEditor.xml
+.idea/assetWizardSettings.xml
+.vscode/
+*.swp
+*.swo
+
+# Gradle and Android
+.gradle/
+build/
+*/build/
+captures/
+.externalNativeBuild/
+.cxx/
+local.properties
+
+# Java/Kotlin artifacts
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+hs_err_pid*
+replay_pid*
+
+# Logs
+*.log
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+*.keystore
+*.jks
+*.p12
+*.pem
+
+# Local docs
+.docs/
