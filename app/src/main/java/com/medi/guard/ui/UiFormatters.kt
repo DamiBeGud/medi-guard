@@ -10,6 +10,14 @@ object UiFormatters {
 
     fun time(hour: Int, minute: Int): String = "%02d:%02d".format(hour, minute)
 
+    fun dosage(amount: String, unit: String): String {
+        val cleanAmount = amount.trim()
+        val cleanUnit = unit.trim()
+        return listOf(cleanAmount, cleanUnit)
+            .filter { it.isNotBlank() }
+            .joinToString(" ")
+    }
+
     fun timeWithUhr(hour: Int, minute: Int): String = "${time(hour, minute)} Uhr"
 
     fun timeWithUhr(millis: Long): String = "${timeFormat.format(millis)} Uhr"

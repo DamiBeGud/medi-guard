@@ -11,11 +11,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AlarmOn
 import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.HealthAndSafety
 import androidx.compose.material.icons.filled.MedicalServices
@@ -33,6 +35,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.medi.guard.ui.components.ClinicalCard
+import com.medi.guard.ui.components.LargeNeutralButton
 import com.medi.guard.ui.components.LargePrimaryButton
 import com.medi.guard.ui.theme.ClinicalBackground
 import com.medi.guard.ui.theme.ClinicalPrimary
@@ -45,12 +48,15 @@ import com.medi.guard.ui.theme.ClinicalWarningContainer
 @Composable
 fun OnboardingScreen(
     onStartClick: () -> Unit,
+    exactAlarmAccessGranted: Boolean,
+    onRequestExactAlarmAccessClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
         modifier = modifier
             .fillMaxSize()
             .background(ClinicalBackground)
+            .safeDrawingPadding()
             .padding(horizontal = 20.dp, vertical = 32.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -108,8 +114,24 @@ fun OnboardingScreen(
                 body = "Sichere Alarme bleiben auch nach einem Handy-Neustart aktiv.",
                 iconBackground = ClinicalPrimarySoft
             )
+            if (!exactAlarmAccessGranted) {
+                BenefitCard(
+                    icon = Icons.Filled.AlarmOn,
+                    title = "Exakte Alarme erlauben",
+                    body = "Für pünktliche Erinnerungen können Sie den Systemzugriff für Alarme und Erinnerungen aktivieren.",
+                    iconBackground = ClinicalPrimarySoft
+                )
+            }
         }
 
+        if (!exactAlarmAccessGranted) {
+            LargeNeutralButton(
+                text = "Exakte Alarme erlauben",
+                icon = Icons.Filled.AlarmOn,
+                onClick = onRequestExactAlarmAccessClick
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+        }
         LargePrimaryButton(
             text = "Loslegen",
             icon = Icons.Filled.ArrowForward,

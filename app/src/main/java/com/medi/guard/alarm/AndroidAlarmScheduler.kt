@@ -5,8 +5,8 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
-import com.medi.guard.MainActivity
 import com.medi.guard.data.directboot.DirectBootAlarmStore
+import com.medi.guard.data.room.RepeatOption
 import java.util.Calendar
 
 class AndroidAlarmScheduler(
@@ -15,9 +15,15 @@ class AndroidAlarmScheduler(
 ) : AlarmScheduler {
     private val alarmManager = context.getSystemService(AlarmManager::class.java)
 
-    override fun scheduleMedicationAlarm(medicationId: Long, hour: Int, minute: Int) {
+    override fun scheduleMedicationAlarm(
+        medicationId: Long,
+        hour: Int,
+        minute: Int,
+        repeatOption: RepeatOption,
+        reminderDayOfWeek: Int?
+    ) {
         val requestCode = DirectBootAlarmStore.requestCodeForMedication(medicationId)
-        val triggerAtMillis = nextTriggerMillis(hour, minute)
+        val triggerAtMillis = nextTriggerMillis(hour, minute, repeatOption, reminderDayOfWeek)
         val operation = alarmPendingIntent(
             medicationId = medicationId,
             requestCode = requestCode,
@@ -27,7 +33,7 @@ class AndroidAlarmScheduler(
             isSnooze = false,
             flags = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
-        setExact(triggerAtMillis, requestCode, operation)
+        setExact(triggerAtMillis, operation)
     }
 
     override fun scheduleSnoozeAlarm(
@@ -46,7 +52,7 @@ class AndroidAlarmScheduler(
             isSnooze = true,
             flags = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
-        setExact(triggerAtMillis, requestCode, operation)
+        setExact(triggerAtMillis, operation)
     }
 
     override fun cancelMedicationAlarm(medicationId: Long) {
@@ -77,8 +83,14 @@ class AndroidAlarmScheduler(
          * Device Protected Storage alarm metadata and must not touch Room or CE data.
          */
         directBootAlarmStore.getAll().forEach { dto ->
-            if (dto.repeatsDaily) {
-                scheduleMedicationAlarm(dto.medicationId, dto.hour, dto.minute)
+            if (dto.repeatOption != RepeatOption.ONCE) {
+                scheduleMedicationAlarm(
+                    medicationId = dto.medicationId,
+                    hour = dto.hour,
+                    minute = dto.minute,
+                    repeatOption = dto.repeatOption,
+                    reminderDayOfWeek = dto.reminderDayOfWeek
+                )
             }
         }
     }
@@ -103,38 +115,69 @@ class AndroidAlarmScheduler(
         return PendingIntent.getBroadcast(context, requestCode, intent, flags)
     }
 
-    private fun setExact(triggerAtMillis: Long, requestCode: Int, operation: PendingIntent?) {
+    private fun setExact(triggerAtMillis: Long, operation: PendingIntent?) {
         operation ?: return
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !alarmManager.canScheduleExactAlarms()) {
-            val showIntent = PendingIntent.getActivity(
-                context,
-                requestCode,
-                Intent(context, MainActivity::class.java),
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            )
-            alarmManager.setAlarmClock(
-                AlarmManager.AlarmClockInfo(triggerAtMillis, showIntent),
-                operation
-            )
+        val manager = alarmManager ?: return
+        val exactAlarmDenied = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+            !manager.canScheduleExactAlarms()
+
+        if (exactAlarmDenied) {
+            setInexact(triggerAtMillis, operation, manager)
             return
         }
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, operation)
-        } else {
-            alarmManager.setExact(AlarmManager.RTC_WAKEUP, triggerAtMillis, operation)
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                manager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, operation)
+            } else {
+                manager.setExact(AlarmManager.RTC_WAKEUP, triggerAtMillis, operation)
+            }
+        } catch (_: SecurityException) {
+            setInexact(triggerAtMillis, operation, manager)
         }
     }
 
-    private fun nextTriggerMillis(hour: Int, minute: Int): Long {
+    private fun setInexact(
+        triggerAtMillis: Long,
+        operation: PendingIntent,
+        manager: AlarmManager
+    ) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            manager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, operation)
+        } else {
+            manager.set(AlarmManager.RTC_WAKEUP, triggerAtMillis, operation)
+        }
+    }
+
+    private fun nextTriggerMillis(
+        hour: Int,
+        minute: Int,
+        repeatOption: RepeatOption,
+        reminderDayOfWeek: Int?
+    ): Long {
         val now = Calendar.getInstance()
         return Calendar.getInstance().apply {
             set(Calendar.HOUR_OF_DAY, hour)
             set(Calendar.MINUTE, minute)
             set(Calendar.SECOND, 0)
             set(Calendar.MILLISECOND, 0)
-            if (!after(now)) {
-                add(Calendar.DAY_OF_YEAR, 1)
+            when (repeatOption) {
+                RepeatOption.DAILY,
+                RepeatOption.ONCE -> {
+                    if (!after(now)) {
+                        add(Calendar.DAY_OF_YEAR, 1)
+                    }
+                }
+
+                RepeatOption.WEEKLY -> {
+                    val targetDay = reminderDayOfWeek ?: now.get(Calendar.DAY_OF_WEEK)
+                    val currentDay = get(Calendar.DAY_OF_WEEK)
+                    val daysUntil = (targetDay - currentDay + 7) % 7
+                    add(Calendar.DAY_OF_YEAR, daysUntil)
+                    if (!after(now)) {
+                        add(Calendar.DAY_OF_YEAR, 7)
+                    }
+                }
             }
         }.timeInMillis
     }

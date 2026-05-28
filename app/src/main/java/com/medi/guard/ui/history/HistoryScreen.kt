@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -17,11 +18,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -45,7 +44,6 @@ import com.medi.guard.ui.theme.ClinicalTextVariant
 @Composable
 fun HistoryScreen(
     state: HistoryUiState,
-    onQueryChange: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     LazyColumn(
@@ -75,26 +73,6 @@ fun HistoryScreen(
             }
         }
 
-        item {
-            OutlinedTextField(
-                value = state.query,
-                onValueChange = onQueryChange,
-                modifier = Modifier.fillMaxWidth(),
-                leadingIcon = {
-                    Icon(imageVector = Icons.Filled.Search, contentDescription = null)
-                },
-                placeholder = {
-                    Text(
-                        text = "Medikament suchen...",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                },
-                singleLine = true,
-                textStyle = MaterialTheme.typography.bodyMedium,
-                shape = RoundedCornerShape(12.dp)
-            )
-        }
-
         if (state.groups.isEmpty()) {
             item {
                 EmptyHistoryCard()
@@ -115,7 +93,10 @@ fun HistoryScreen(
         }
 
         item {
-            WeeklySummaryCard(text = state.weeklyText)
+            WeeklySummaryCard(
+                text = state.weeklyText,
+                bars = state.weeklyBars
+            )
         }
     }
 }
@@ -218,7 +199,12 @@ private fun HistoryEntryCard(entry: HistoryEntryUi) {
 }
 
 @Composable
-private fun WeeklySummaryCard(text: String) {
+private fun WeeklySummaryCard(
+    text: String,
+    bars: List<WeeklyOverviewBarUi>
+) {
+    val maxCount = bars.maxOfOrNull { it.dueCount.coerceAtLeast(it.takenCount) }?.coerceAtLeast(1) ?: 1
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -236,32 +222,71 @@ private fun WeeklySummaryCard(text: String) {
             style = MaterialTheme.typography.bodyMedium,
             color = Color.White
         )
+        Text(
+            text = "Dunkel: bestätigt  Hell: geplant",
+            style = MaterialTheme.typography.labelLarge,
+            color = Color.White.copy(alpha = 0.75f)
+        )
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(72.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                .height(96.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalAlignment = Alignment.Bottom
         ) {
-            listOf(1f, 0.65f, 0.7f, 1f, 0.95f, 0.45f, 0.3f).forEachIndexed { index, heightFactor ->
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth()
-                        .height((64 * heightFactor).dp)
-                        .background(
-                            if (index == 4) Color.White else Color.White.copy(alpha = 0.28f),
-                            RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp)
-                        )
-                )
-            }
-        }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            listOf("M", "D", "M", "D", "F", "S", "S").forEach {
-                Text(text = it, style = MaterialTheme.typography.labelLarge, color = Color.White.copy(alpha = 0.75f))
+            bars.forEach { bar ->
+                val dueHeight = if (bar.dueCount == 0) 6.dp else (64f * bar.dueCount / maxCount).dp
+                val takenHeight = if (bar.dueCount == 0) {
+                    0.dp
+                } else {
+                    dueHeight * (bar.takenCount.toFloat() / bar.dueCount.toFloat())
+                }
+
+                Column(
+                    modifier = Modifier.weight(1f),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Bottom
+                ) {
+                    Text(
+                        text = if (bar.dueCount == 0) "-" else "${bar.takenCount}/${bar.dueCount}",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = Color.White.copy(alpha = if (bar.isToday) 1f else 0.82f)
+                    )
+                    Box(
+                        modifier = Modifier
+                            .height(64.dp)
+                            .fillMaxWidth(),
+                        contentAlignment = Alignment.BottomCenter
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .width(24.dp)
+                                .height(dueHeight)
+                                .background(
+                                    if (bar.isToday) Color.White.copy(alpha = 0.42f) else Color.White.copy(alpha = 0.24f),
+                                    RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp)
+                                ),
+                            contentAlignment = Alignment.BottomCenter
+                        ) {
+                            if (takenHeight > 0.dp) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(takenHeight)
+                                        .background(
+                                            Color.White,
+                                            RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp)
+                                        )
+                                )
+                            }
+                        }
+                    }
+                    Text(
+                        text = bar.label,
+                        style = MaterialTheme.typography.labelLarge,
+                        color = Color.White.copy(alpha = if (bar.isToday) 1f else 0.75f)
+                    )
+                }
             }
         }
     }

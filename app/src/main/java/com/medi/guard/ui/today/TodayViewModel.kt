@@ -6,6 +6,7 @@ import com.medi.guard.data.repository.MedicationRepository
 import com.medi.guard.data.room.IntakeHistoryEntity
 import com.medi.guard.data.room.IntakeStatus
 import com.medi.guard.data.room.MedicationEntity
+import com.medi.guard.data.room.RepeatOption
 import com.medi.guard.ui.UiFormatters
 import java.util.Calendar
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,6 +26,7 @@ data class TodayMedicationUi(
     val id: Long,
     val name: String,
     val dosage: String,
+    val medicationType: String,
     val time: String,
     val scheduledAtMillis: Long,
     val status: ReminderStatus,
@@ -47,7 +49,7 @@ class TodayViewModel(
         message
     ) { medications, history, currentMessage ->
         TodayUiState(
-            reminders = medications.map { medication ->
+            reminders = medications.filter { it.isScheduledForToday() }.map { medication ->
                 medication.toTodayMedicationUi(history)
             },
             message = currentMessage
@@ -81,12 +83,32 @@ class TodayViewModel(
         return TodayMedicationUi(
             id = id,
             name = name,
-            dosage = dosage,
+            dosage = UiFormatters.dosage(dosageAmount, dosageUnit),
+            medicationType = medicationType,
             time = UiFormatters.time(reminderHour, reminderMinute),
             scheduledAtMillis = scheduledAt,
             status = status,
             isActive = isActive
         )
+    }
+
+    private fun MedicationEntity.isScheduledForToday(): Boolean {
+        val today = Calendar.getInstance()
+        val createdDay = Calendar.getInstance().apply {
+            timeInMillis = createdAtMillis
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        val todayStart = MedicationRepository.startOfTodayMillis()
+        if (createdDay.timeInMillis > todayStart) return false
+
+        return when (repeatOption) {
+            RepeatOption.DAILY -> true
+            RepeatOption.WEEKLY -> reminderDayOfWeek == today.get(Calendar.DAY_OF_WEEK)
+            RepeatOption.ONCE -> UiFormatters.sameDay(createdDay, today)
+        }
     }
 
     private fun statusForMedication(

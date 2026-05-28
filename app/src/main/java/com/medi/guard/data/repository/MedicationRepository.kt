@@ -10,6 +10,7 @@ import com.medi.guard.data.room.IntakeStatus
 import com.medi.guard.data.room.MedicationDao
 import com.medi.guard.data.room.MedicationEntity
 import com.medi.guard.data.room.RepeatOption
+import com.medi.guard.ui.UiFormatters
 import java.util.Calendar
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -40,47 +41,71 @@ class MedicationRepository(
 
     suspend fun addMedication(
         name: String,
-        dosage: String,
+        medicationType: String,
+        dosageAmount: String,
+        dosageUnit: String,
         hour: Int,
         minute: Int,
-        repeatOption: RepeatOption
+        repeatOption: RepeatOption,
+        reminderDayOfWeek: Int?
     ): Long = withContext(Dispatchers.IO) {
         val medicationId = medicationDao.insertMedication(
             MedicationEntity(
                 name = name.trim(),
-                dosage = dosage.trim(),
+                medicationType = medicationType.trim(),
+                dosageAmount = dosageAmount.trim(),
+                dosageUnit = dosageUnit.trim(),
                 reminderHour = hour,
                 reminderMinute = minute,
                 repeatOption = repeatOption,
+                reminderDayOfWeek = reminderDayOfWeek,
                 isActive = true
             )
         )
-        saveDirectBootMetadata(medicationId, hour, minute, repeatOption)
-        alarmScheduler.scheduleMedicationAlarm(medicationId, hour, minute)
+        saveDirectBootMetadata(medicationId, hour, minute, repeatOption, reminderDayOfWeek)
+        alarmScheduler.scheduleMedicationAlarm(
+            medicationId,
+            hour,
+            minute,
+            repeatOption,
+            reminderDayOfWeek
+        )
         medicationId
     }
 
     suspend fun updateMedication(
         medicationId: Long,
         name: String,
-        dosage: String,
+        medicationType: String,
+        dosageAmount: String,
+        dosageUnit: String,
         hour: Int,
         minute: Int,
-        repeatOption: RepeatOption
+        repeatOption: RepeatOption,
+        reminderDayOfWeek: Int?
     ): Boolean = withContext(Dispatchers.IO) {
         val existing = medicationDao.getMedication(medicationId) ?: return@withContext false
         val updated = existing.copy(
             name = name.trim(),
-            dosage = dosage.trim(),
+            medicationType = medicationType.trim(),
+            dosageAmount = dosageAmount.trim(),
+            dosageUnit = dosageUnit.trim(),
             reminderHour = hour,
             reminderMinute = minute,
-            repeatOption = repeatOption
+            repeatOption = repeatOption,
+            reminderDayOfWeek = reminderDayOfWeek
         )
         medicationDao.updateMedication(updated)
 
         if (updated.isActive) {
-            saveDirectBootMetadata(medicationId, hour, minute, repeatOption)
-            alarmScheduler.scheduleMedicationAlarm(medicationId, hour, minute)
+            saveDirectBootMetadata(medicationId, hour, minute, repeatOption, reminderDayOfWeek)
+            alarmScheduler.scheduleMedicationAlarm(
+                medicationId,
+                hour,
+                minute,
+                repeatOption,
+                reminderDayOfWeek
+            )
         }
         true
     }
@@ -96,12 +121,15 @@ class MedicationRepository(
                 medicationId = medicationId,
                 hour = existing.reminderHour,
                 minute = existing.reminderMinute,
-                repeatOption = existing.repeatOption
+                repeatOption = existing.repeatOption,
+                reminderDayOfWeek = existing.reminderDayOfWeek
             )
             alarmScheduler.scheduleMedicationAlarm(
                 medicationId = medicationId,
                 hour = existing.reminderHour,
-                minute = existing.reminderMinute
+                minute = existing.reminderMinute,
+                repeatOption = existing.repeatOption,
+                reminderDayOfWeek = existing.reminderDayOfWeek
             )
         }
         true
@@ -125,7 +153,7 @@ class MedicationRepository(
             IntakeHistoryEntity(
                 medicationId = medicationId,
                 medicationName = medication.name,
-                dosage = medication.dosage,
+                dosage = UiFormatters.dosage(medication.dosageAmount, medication.dosageUnit),
                 scheduledAtMillis = scheduledAtMillis
                     ?: scheduledTimeForToday(medication.reminderHour, medication.reminderMinute),
                 takenAtMillis = takenAtMillis,
@@ -163,7 +191,8 @@ class MedicationRepository(
         medicationId: Long,
         hour: Int,
         minute: Int,
-        repeatOption: RepeatOption
+        repeatOption: RepeatOption,
+        reminderDayOfWeek: Int?
     ) {
         directBootAlarmStore.save(
             DirectBootAlarmDto(
@@ -171,7 +200,8 @@ class MedicationRepository(
                 hour = hour,
                 minute = minute,
                 requestCode = DirectBootAlarmStore.requestCodeForMedication(medicationId),
-                repeatsDaily = repeatOption == RepeatOption.DAILY
+                repeatOption = repeatOption,
+                reminderDayOfWeek = reminderDayOfWeek
             )
         )
     }

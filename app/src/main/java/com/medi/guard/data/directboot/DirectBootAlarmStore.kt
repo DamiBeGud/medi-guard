@@ -1,6 +1,8 @@
 package com.medi.guard.data.directboot
 
 import android.content.Context
+import com.medi.guard.data.room.RepeatOption
+import java.util.Calendar
 import kotlin.math.absoluteValue
 
 class DirectBootAlarmStore(context: Context) {
@@ -21,7 +23,8 @@ class DirectBootAlarmStore(context: Context) {
             .putInt(key(dto.medicationId, "hour"), dto.hour)
             .putInt(key(dto.medicationId, "minute"), dto.minute)
             .putInt(key(dto.medicationId, "requestCode"), dto.requestCode)
-            .putBoolean(key(dto.medicationId, "repeatsDaily"), dto.repeatsDaily)
+            .putString(key(dto.medicationId, "repeatOption"), dto.repeatOption.name)
+            .putInt(key(dto.medicationId, "reminderDayOfWeek"), dto.reminderDayOfWeek ?: -1)
             .apply()
     }
 
@@ -34,7 +37,8 @@ class DirectBootAlarmStore(context: Context) {
             .remove(key(medicationId, "hour"))
             .remove(key(medicationId, "minute"))
             .remove(key(medicationId, "requestCode"))
-            .remove(key(medicationId, "repeatsDaily"))
+            .remove(key(medicationId, "repeatOption"))
+            .remove(key(medicationId, "reminderDayOfWeek"))
             .apply()
     }
 
@@ -47,7 +51,11 @@ class DirectBootAlarmStore(context: Context) {
                 key(medicationId, "requestCode"),
                 requestCodeForMedication(medicationId)
             )
-            val repeatsDaily = prefs.getBoolean(key(medicationId, "repeatsDaily"), true)
+            val repeatOption = prefs.getString(key(medicationId, "repeatOption"), RepeatOption.DAILY.name)
+                ?.let { runCatching { RepeatOption.valueOf(it) }.getOrDefault(RepeatOption.DAILY) }
+                ?: RepeatOption.DAILY
+            val reminderDayOfWeek = prefs.getInt(key(medicationId, "reminderDayOfWeek"), -1)
+                .takeIf { it in Calendar.SUNDAY..Calendar.SATURDAY }
 
             if (hour in 0..23 && minute in 0..59) {
                 DirectBootAlarmDto(
@@ -55,7 +63,8 @@ class DirectBootAlarmStore(context: Context) {
                     hour = hour,
                     minute = minute,
                     requestCode = requestCode,
-                    repeatsDaily = repeatsDaily
+                    repeatOption = repeatOption,
+                    reminderDayOfWeek = reminderDayOfWeek
                 )
             } else {
                 null

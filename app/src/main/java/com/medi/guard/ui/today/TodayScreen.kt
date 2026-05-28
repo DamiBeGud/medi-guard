@@ -221,9 +221,10 @@ private fun MedicationReminderCard(
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "Tablette",
+                            text = reminder.medicationType,
                             style = MaterialTheme.typography.labelLarge,
-                            color = ClinicalTextVariant
+                            color = ClinicalTextVariant,
+                            maxLines = 2
                         )
                     }
                 }

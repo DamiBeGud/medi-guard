@@ -6,6 +6,7 @@ import android.content.Intent
 import android.os.Build
 import android.os.UserManager
 import com.medi.guard.MediGuardApplication
+import com.medi.guard.data.room.RepeatOption
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -46,8 +47,14 @@ class MedicationAlarmReceiver : BroadcastReceiver() {
             val metadata = app.directBootAlarmStore.getAll().firstOrNull {
                 it.medicationId == medicationId
             }
-            if (metadata?.repeatsDaily == true) {
-                app.alarmScheduler.scheduleMedicationAlarm(medicationId, metadata.hour, metadata.minute)
+            if (metadata != null && metadata.repeatOption != RepeatOption.ONCE) {
+                app.alarmScheduler.scheduleMedicationAlarm(
+                    medicationId = medicationId,
+                    hour = metadata.hour,
+                    minute = metadata.minute,
+                    repeatOption = metadata.repeatOption,
+                    reminderDayOfWeek = metadata.reminderDayOfWeek
+                )
             } else {
                 app.directBootAlarmStore.remove(medicationId)
             }

@@ -16,6 +16,7 @@ import com.medi.guard.MainActivity
 import com.medi.guard.R
 import com.medi.guard.alarm.MedicationAlarmReceiver
 import com.medi.guard.data.room.MedicationEntity
+import com.medi.guard.ui.UiFormatters
 
 class MedicationNotificationManager(private val context: Context) {
     fun createNotificationChannel() {
@@ -49,13 +50,14 @@ class MedicationNotificationManager(private val context: Context) {
     }
 
     fun showDetailedReminder(medication: MedicationEntity, scheduledAtMillis: Long) {
+        val dosageText = UiFormatters.dosage(medication.dosageAmount, medication.dosageUnit)
         showReminder(
             medicationId = medication.id,
             scheduledAtMillis = scheduledAtMillis,
             hour = medication.reminderHour,
             minute = medication.reminderMinute,
             title = "MediGuard Erinnerung",
-            body = "Bitte nehmen Sie jetzt ${medication.dosage} ${medication.name} ein."
+            body = "Bitte nehmen Sie jetzt $dosageText ${medication.name} ein."
         )
     }
 

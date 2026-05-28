@@ -5,7 +5,9 @@ import androidx.lifecycle.viewModelScope
 import com.medi.guard.data.repository.MedicationRepository
 import com.medi.guard.data.room.IntakeHistoryEntity
 import com.medi.guard.data.room.MedicationEntity
+import com.medi.guard.data.room.RepeatOption
 import com.medi.guard.ui.UiFormatters
+import java.util.Calendar
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -16,6 +18,7 @@ import kotlinx.coroutines.launch
 data class MedicationDetailUiState(
     val medication: MedicationEntity? = null,
     val reminderTime: String = "",
+    val dosageText: String = "",
     val lastTakenText: String = "Noch keine Einnahme bestätigt",
     val message: String? = null,
     val deleted: Boolean = false
@@ -36,8 +39,9 @@ class MedicationDetailViewModel(
     ) { medication, history, currentMessage, isDeleted ->
         MedicationDetailUiState(
             medication = medication,
-            reminderTime = medication?.let {
-                UiFormatters.timeWithUhr(it.reminderHour, it.reminderMinute)
+            reminderTime = medication?.reminderText().orEmpty(),
+            dosageText = medication?.let {
+                UiFormatters.dosage(it.dosageAmount, it.dosageUnit)
             }.orEmpty(),
             lastTakenText = lastTakenText(history),
             message = currentMessage,
@@ -98,5 +102,26 @@ class MedicationDetailViewModel(
         val lastTaken = history.firstOrNull { it.takenAtMillis != null } ?: return "Noch keine Einnahme bestätigt"
         val takenAtMillis = lastTaken.takenAtMillis ?: return "Noch keine Einnahme bestätigt"
         return "Zuletzt eingenommen um ${UiFormatters.timeWithUhr(takenAtMillis)}"
+    }
+
+    private fun MedicationEntity.reminderText(): String {
+        val time = UiFormatters.timeWithUhr(reminderHour, reminderMinute)
+        return when (repeatOption) {
+            RepeatOption.DAILY -> time
+            RepeatOption.WEEKLY -> "Jeden ${weekdayLabel(reminderDayOfWeek)} um $time"
+            RepeatOption.ONCE -> "Einmalig um $time"
+        }
+    }
+
+    private fun weekdayLabel(dayOfWeek: Int?): String {
+        return when (dayOfWeek) {
+            Calendar.MONDAY -> "Montag"
+            Calendar.TUESDAY -> "Dienstag"
+            Calendar.WEDNESDAY -> "Mittwoch"
+            Calendar.THURSDAY -> "Donnerstag"
+            Calendar.FRIDAY -> "Freitag"
+            Calendar.SATURDAY -> "Samstag"
+            else -> "Sonntag"
+        }
     }
 }

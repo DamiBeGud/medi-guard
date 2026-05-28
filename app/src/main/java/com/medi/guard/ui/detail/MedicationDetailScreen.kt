@@ -116,7 +116,7 @@ fun MedicationDetailScreen(
                             color = ClinicalText
                         )
                         Text(
-                            text = "${medication.dosage} Dosis",
+                            text = "${state.dosageText} ${medication.medicationType}",
                             style = MaterialTheme.typography.bodyLarge,
                             color = ClinicalTextVariant
                         )

@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.AddCircle
@@ -152,9 +153,14 @@ fun MediGuardMainApp(app: MediGuardApplication) {
                 AddMedicationScreen(
                     state = state,
                     onNameChange = viewModel::updateName,
+                    onMedicationTypeChange = viewModel::updateMedicationType,
+                    onMedicationTypeCustomChange = viewModel::updateMedicationTypeCustom,
                     onDosageChange = viewModel::updateDosage,
+                    onDosageUnitChange = viewModel::updateDosageUnit,
+                    onDosageUnitCustomChange = viewModel::updateDosageUnitCustom,
                     onTimeChange = viewModel::updateTime,
                     onRepeatOptionChange = viewModel::updateRepeatOption,
+                    onReminderDayOfWeekChange = viewModel::updateReminderDayOfWeek,
                     onSaveClick = viewModel::save
                 )
             }
@@ -165,8 +171,7 @@ fun MediGuardMainApp(app: MediGuardApplication) {
                 )
                 val state by viewModel.uiState.collectAsStateWithLifecycle()
                 HistoryScreen(
-                    state = state,
-                    onQueryChange = viewModel::updateQuery
+                    state = state
                 )
             }
 
@@ -222,19 +227,21 @@ fun MediGuardMainApp(app: MediGuardApplication) {
                 LaunchedEffect(state.successMessage) {
                     state.successMessage?.let {
                         viewModel.consumeSuccess()
-                        navController.navigate(MediGuardRoutes.detail(medicationId)) {
-                            popUpTo(MediGuardRoutes.DetailPattern) { inclusive = true }
-                            launchSingleTop = true
-                        }
+                        navController.popBackStack()
                         snackbarHostState.showSnackbar(it)
                     }
                 }
                 AddMedicationScreen(
                     state = state,
                     onNameChange = viewModel::updateName,
+                    onMedicationTypeChange = viewModel::updateMedicationType,
+                    onMedicationTypeCustomChange = viewModel::updateMedicationTypeCustom,
                     onDosageChange = viewModel::updateDosage,
+                    onDosageUnitChange = viewModel::updateDosageUnit,
+                    onDosageUnitCustomChange = viewModel::updateDosageUnitCustom,
                     onTimeChange = viewModel::updateTime,
                     onRepeatOptionChange = viewModel::updateRepeatOption,
+                    onReminderDayOfWeekChange = viewModel::updateReminderDayOfWeek,
                     onSaveClick = viewModel::save
                 )
             }
@@ -265,6 +272,7 @@ private fun MediGuardTopBar(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .statusBarsPadding()
                 .heightIn(min = 72.dp)
                 .padding(horizontal = 20.dp, vertical = 12.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -344,7 +352,7 @@ private fun MediGuardBottomBar(
                 },
                 colors = NavigationBarItemDefaults.colors(
                     selectedIconColor = Color.White,
-                    selectedTextColor = Color.White,
+                    selectedTextColor = ClinicalPrimary,
                     indicatorColor = ClinicalPrimary,
                     unselectedIconColor = ClinicalText,
                     unselectedTextColor = ClinicalText

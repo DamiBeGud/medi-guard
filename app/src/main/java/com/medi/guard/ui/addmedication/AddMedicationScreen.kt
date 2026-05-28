@@ -22,6 +22,10 @@ import androidx.compose.material.icons.filled.HealthAndSafety
 import androidx.compose.material.icons.filled.Medication
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -29,12 +33,21 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.medi.guard.data.room.RepeatOption
+import java.util.Calendar
+import com.medi.guard.ui.addmedication.AddMedicationViewModel.Companion.COMMON_DOSAGE_UNITS
+import com.medi.guard.ui.addmedication.AddMedicationViewModel.Companion.COMMON_MEDICATION_TYPES
+import com.medi.guard.ui.addmedication.AddMedicationViewModel.Companion.OTHER_OPTION
 import com.medi.guard.ui.components.LargePrimaryButton
 import com.medi.guard.ui.components.TimePickerField
 import com.medi.guard.ui.theme.ClinicalBackground
@@ -51,9 +64,14 @@ import com.medi.guard.ui.theme.ClinicalTextVariant
 fun AddMedicationScreen(
     state: AddMedicationUiState,
     onNameChange: (String) -> Unit,
+    onMedicationTypeChange: (String) -> Unit,
+    onMedicationTypeCustomChange: (String) -> Unit,
     onDosageChange: (String) -> Unit,
+    onDosageUnitChange: (String) -> Unit,
+    onDosageUnitCustomChange: (String) -> Unit,
     onTimeChange: (Int, Int) -> Unit,
     onRepeatOptionChange: (RepeatOption) -> Unit,
+    onReminderDayOfWeekChange: (Int) -> Unit,
     onSaveClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -89,19 +107,51 @@ fun AddMedicationScreen(
             onValueChange = onNameChange
         )
 
-        LabeledTextField(
-            label = "Dosierung",
-            value = state.dosage,
-            placeholder = "z.B. 500 mg",
-            onValueChange = onDosageChange,
-            trailingIcon = {
-                Icon(
-                    imageVector = Icons.Filled.Medication,
-                    contentDescription = null,
-                    tint = ClinicalTextVariant
+        LabeledDropdownField(
+            label = "Art des Medikaments",
+            value = state.medicationType,
+            options = COMMON_MEDICATION_TYPES,
+            onValueChange = onMedicationTypeChange
+        )
+        if (state.medicationType == OTHER_OPTION) {
+            LabeledTextField(
+                label = "Andere Art",
+                value = state.medicationTypeCustom,
+                placeholder = "z.B. Pulver, Zäpfchen",
+                onValueChange = onMedicationTypeCustomChange
+            )
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.Top
+        ) {
+            Box(modifier = Modifier.weight(1f)) {
+                LabeledTextField(
+                    label = "Dosierung",
+                    value = state.dosageAmount,
+                    placeholder = "z.B. 500 oder 2",
+                    onValueChange = onDosageChange
                 )
             }
-        )
+            Box(modifier = Modifier.weight(1f)) {
+                LabeledDropdownField(
+                    label = "Einheit",
+                    value = state.dosageUnit,
+                    options = COMMON_DOSAGE_UNITS,
+                    onValueChange = onDosageUnitChange
+                )
+            }
+        }
+        if (state.dosageUnit == OTHER_OPTION) {
+            LabeledTextField(
+                label = "Andere Einheit",
+                value = state.dosageUnitCustom,
+                placeholder = "z.B. Beutel, I.E., Messlöffel",
+                onValueChange = onDosageUnitCustomChange
+            )
+        }
 
         TimePickerField(
             label = "Uhrzeit der Einnahme",
@@ -123,11 +173,23 @@ fun AddMedicationScreen(
                 onClick = { onRepeatOptionChange(RepeatOption.DAILY) }
             )
             RepeatOptionCard(
+                title = "Bestimmter Tag",
+                subtitle = "Wöchentlich an einem festen Wochentag",
+                selected = state.repeatOption == RepeatOption.WEEKLY,
+                onClick = { onRepeatOptionChange(RepeatOption.WEEKLY) }
+            )
+            RepeatOptionCard(
                 title = "Nur heute",
                 subtitle = "Einmalige Einnahme",
                 selected = state.repeatOption == RepeatOption.ONCE,
                 onClick = { onRepeatOptionChange(RepeatOption.ONCE) }
             )
+            if (state.repeatOption == RepeatOption.WEEKLY) {
+                WeekdaySelector(
+                    selectedDayOfWeek = state.reminderDayOfWeek,
+                    onDaySelected = onReminderDayOfWeekChange
+                )
+            }
         }
 
         PrivacyInfoCard()
@@ -146,6 +208,133 @@ fun AddMedicationScreen(
             onClick = onSaveClick,
             enabled = !state.isSaving
         )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun LabeledDropdownField(
+    label: String,
+    value: String,
+    options: List<String>,
+    onValueChange: (String) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(text = label, style = MaterialTheme.typography.labelLarge, color = ClinicalText)
+        ExposedDropdownMenuBox(
+            expanded = expanded,
+            onExpandedChange = { expanded = !expanded }
+        ) {
+            OutlinedTextField(
+                value = value,
+                onValueChange = {},
+                readOnly = true,
+                modifier = Modifier
+                    .menuAnchor()
+                    .fillMaxWidth()
+                    .heightIn(min = 72.dp),
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                singleLine = true,
+                textStyle = MaterialTheme.typography.bodyLarge,
+                shape = RoundedCornerShape(12.dp)
+            )
+            ExposedDropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false }
+            ) {
+                options.forEach { option ->
+                    DropdownMenuItem(
+                        text = { Text(option) },
+                        onClick = {
+                            onValueChange(option)
+                            expanded = false
+                        }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun WeekdaySelector(
+    selectedDayOfWeek: Int,
+    onDaySelected: (Int) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text(
+            text = "Wochentag",
+            style = MaterialTheme.typography.labelLarge,
+            color = ClinicalText
+        )
+        val rows = listOf(
+            listOf(Calendar.MONDAY, Calendar.TUESDAY, Calendar.WEDNESDAY, Calendar.THURSDAY),
+            listOf(Calendar.FRIDAY, Calendar.SATURDAY, Calendar.SUNDAY)
+        )
+        rows.forEach { rowDays ->
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                rowDays.forEach { dayOfWeek ->
+                    WeekdayChip(
+                        label = weekdayLabel(dayOfWeek),
+                        selected = selectedDayOfWeek == dayOfWeek,
+                        onClick = { onDaySelected(dayOfWeek) },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                repeat(4 - rowDays.size) {
+                    Box(modifier = Modifier.weight(1f))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun WeekdayChip(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier
+            .heightIn(min = 52.dp)
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (selected) ClinicalPrimary else ClinicalSurface
+        ),
+        border = BorderStroke(
+            width = if (selected) 2.dp else 1.dp,
+            color = if (selected) ClinicalPrimary else ClinicalOutlineVariant
+        )
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 14.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelLarge,
+                color = if (selected) Color.White else ClinicalText
+            )
+        }
+    }
+}
+
+private fun weekdayLabel(dayOfWeek: Int): String {
+    return when (dayOfWeek) {
+        Calendar.MONDAY -> "Mo"
+        Calendar.TUESDAY -> "Di"
+        Calendar.WEDNESDAY -> "Mi"
+        Calendar.THURSDAY -> "Do"
+        Calendar.FRIDAY -> "Fr"
+        Calendar.SATURDAY -> "Sa"
+        else -> "So"
     }
 }
 
@@ -206,23 +395,31 @@ private fun RepeatOptionCard(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
                 Text(
                     text = title,
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.SemiBold,
-                    color = ClinicalText
+                    color = ClinicalText,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
                 )
                 Text(
                     text = subtitle,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = ClinicalTextVariant
+                    color = ClinicalTextVariant,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
             RadioButton(
                 selected = selected,
                 onClick = onClick,
-                colors = RadioButtonDefaults.colors(selectedColor = ClinicalPrimary)
+                colors = RadioButtonDefaults.colors(selectedColor = ClinicalPrimary),
+                modifier = Modifier.padding(start = 12.dp)
             )
         }
     }

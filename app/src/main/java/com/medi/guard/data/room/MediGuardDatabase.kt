@@ -11,7 +11,7 @@ import androidx.room.TypeConverters
         MedicationEntity::class,
         IntakeHistoryEntity::class
     ],
-    version = 1,
+    version = 3,
     exportSchema = false
 )
 @TypeConverters(MediGuardConverters::class)
@@ -30,6 +30,7 @@ abstract class MediGuardDatabase : RoomDatabase() {
                     MediGuardDatabase::class.java,
                     "mediguard.db"
                 )
+                    .fallbackToDestructiveMigration()
                     .build()
                     .also { instance = it }
             }
