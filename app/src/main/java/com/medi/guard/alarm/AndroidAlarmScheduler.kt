@@ -15,6 +15,7 @@ class AndroidAlarmScheduler(
 ) : AlarmScheduler {
     private val alarmManager = context.getSystemService(AlarmManager::class.java)
 
+    // Registers the next normal reminder alarm for a medication.
     override fun scheduleMedicationAlarm(
         medicationId: Long,
         hour: Int,
@@ -36,6 +37,7 @@ class AndroidAlarmScheduler(
         setExact(triggerAtMillis, operation)
     }
 
+    // Registers a temporary follow-up alarm after the user tapped "Später erinnern".
     override fun scheduleSnoozeAlarm(
         medicationId: Long,
         triggerAtMillis: Long,
@@ -55,6 +57,7 @@ class AndroidAlarmScheduler(
         setExact(triggerAtMillis, operation)
     }
 
+    // Removes both the normal reminder and the separate snooze alarm for the medication.
     override fun cancelMedicationAlarm(medicationId: Long) {
         val requestCode = DirectBootAlarmStore.requestCodeForMedication(medicationId)
         alarmPendingIntent(
@@ -115,6 +118,7 @@ class AndroidAlarmScheduler(
         return PendingIntent.getBroadcast(context, requestCode, intent, flags)
     }
 
+    // Uses exact alarms when allowed and falls back to inexact scheduling when Android blocks them.
     private fun setExact(triggerAtMillis: Long, operation: PendingIntent?) {
         operation ?: return
         val manager = alarmManager ?: return
@@ -137,6 +141,7 @@ class AndroidAlarmScheduler(
         }
     }
 
+    // Shared fallback used when exact alarms are unavailable or denied.
     private fun setInexact(
         triggerAtMillis: Long,
         operation: PendingIntent,
@@ -149,6 +154,7 @@ class AndroidAlarmScheduler(
         }
     }
 
+    // Calculates the next fire time for daily, weekly, and one-time reminder modes.
     private fun nextTriggerMillis(
         hour: Int,
         minute: Int,
@@ -183,6 +189,8 @@ class AndroidAlarmScheduler(
     }
 
     companion object {
-        private const val SNOOZE_OFFSET = 900_000
+        // private const val SNOOZE_OFFSET = 900_000
+        private const val SNOOZE_OFFSET = 900
+
     }
 }

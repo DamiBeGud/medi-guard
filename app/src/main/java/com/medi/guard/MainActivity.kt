@@ -43,6 +43,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Keep permission-related UI state current before the first Compose frame is built.
         refreshExactAlarmAccessState()
         requestNotificationPermissionIfNeeded()
 
@@ -64,9 +65,11 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        // Re-check exact alarm access after returning from system settings.
         refreshExactAlarmAccessState()
     }
 
+    // Requests Android 13+ notification permission so reminders can be shown.
     private fun requestNotificationPermissionIfNeeded() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
         val granted = ContextCompat.checkSelfPermission(
@@ -78,6 +81,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    // Opens the system screen where the user can grant the exact-alarm special access.
     private fun requestExactAlarmAccessIfNeeded() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return
         val alarmManager = getSystemService(AlarmManager::class.java)
@@ -92,6 +96,7 @@ class MainActivity : ComponentActivity() {
         exactAlarmAccessLauncher.launch(intent)
     }
 
+    // Mirrors the current exact-alarm access into Compose state for onboarding and scheduling UI.
     private fun refreshExactAlarmAccessState() {
         exactAlarmAccessGranted = if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
             true

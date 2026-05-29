@@ -60,6 +60,7 @@ class TodayViewModel(
         initialValue = TodayUiState()
     )
 
+    // Confirms a reminder from the home screen and exposes a snackbar message on success.
     fun markTaken(medicationId: Long, scheduledAtMillis: Long) {
         viewModelScope.launch {
             if (repository.markMedicationTaken(medicationId, scheduledAtMillis)) {
@@ -68,6 +69,7 @@ class TodayViewModel(
         }
     }
 
+    // Delays the current reminder without changing the medication's base schedule.
     fun snooze(medicationId: Long, scheduledAtMillis: Long) {
         repository.snoozeMedication(medicationId, scheduledAtMillis)
         message.value = "Erinnerung in 15 Minuten"
@@ -77,6 +79,7 @@ class TodayViewModel(
         message.value = null
     }
 
+    // Builds a UI card model by combining one medication with today's history state.
     private fun MedicationEntity.toTodayMedicationUi(history: List<IntakeHistoryEntity>): TodayMedicationUi {
         val scheduledAt = MedicationRepository.scheduledTimeForToday(reminderHour, reminderMinute)
         val status = statusForMedication(id, scheduledAt, history)
@@ -92,6 +95,7 @@ class TodayViewModel(
         )
     }
 
+    // Applies the repeat mode to decide whether the medication belongs in today's list.
     private fun MedicationEntity.isScheduledForToday(): Boolean {
         val today = Calendar.getInstance()
         val createdDay = Calendar.getInstance().apply {
@@ -111,6 +115,7 @@ class TodayViewModel(
         }
     }
 
+    // Derives the reminder status from today's confirmations and a one-hour grace period after the reminder time.
     private fun statusForMedication(
         medicationId: Long,
         scheduledAtMillis: Long,

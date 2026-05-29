@@ -32,6 +32,7 @@ class BootCompletedReceiver : BroadcastReceiver() {
         }
     }
 
+    // Moves lock-screen confirmations from Device Protected Storage into normal Room history after unlock.
     private fun reconcilePendingIfUnlocked(context: Context, app: MediGuardApplication) {
         if (!isUserUnlocked(context)) return
 
@@ -45,6 +46,7 @@ class BootCompletedReceiver : BroadcastReceiver() {
         }
     }
 
+    // Indicates whether credential-encrypted app storage can already be accessed.
     private fun isUserUnlocked(context: Context): Boolean {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) return true
         return context.getSystemService(UserManager::class.java).isUserUnlocked

@@ -63,12 +63,14 @@ class HistoryViewModel(
         initialValue = HistoryUiState()
     )
 
+    // Groups raw history rows by their visible calendar date for sectioned rendering in the timeline.
     private fun List<IntakeHistoryEntity>.grouped(): List<HistoryGroupUi> {
         return map { it.toUi() }
             .groupBy { UiFormatters.historyDateLabel(it.scheduledAtMillis) }
             .map { (label, entries) -> HistoryGroupUi(label = label, entries = entries) }
     }
 
+    // Maps one database history row into localized text used by the history screen.
     private fun IntakeHistoryEntity.toUi(): HistoryEntryUi {
         return HistoryEntryUi(
             id = id,
@@ -87,6 +89,7 @@ class HistoryViewModel(
         )
     }
 
+    // Summarizes the weekly bars into a short sentence above the chart.
     private fun weeklySummary(bars: List<WeeklyOverviewBarUi>): String {
         val totalDue = bars.sumOf { it.dueCount }
         val totalTaken = bars.sumOf { it.takenCount }
@@ -97,6 +100,7 @@ class HistoryViewModel(
         }
     }
 
+    // Calculates planned and confirmed intakes for each day of the current Monday-to-Sunday week.
     private fun weeklyBars(
         medications: List<MedicationEntity>,
         history: List<IntakeHistoryEntity>
@@ -130,6 +134,7 @@ class HistoryViewModel(
         }
     }
 
+    // Checks whether a medication should count toward a given day in the weekly overview.
     private fun MedicationEntity.isScheduledFor(
         day: Calendar,
         dayStartMillis: Long
@@ -150,6 +155,7 @@ class HistoryViewModel(
         }
     }
 
+    // Normalizes any date to the Monday that starts the currently displayed week.
     private fun startOfWeek(reference: Calendar): Calendar {
         return (reference.clone() as Calendar).apply {
             firstDayOfWeek = Calendar.MONDAY

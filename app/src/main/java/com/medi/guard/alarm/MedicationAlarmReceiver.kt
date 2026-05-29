@@ -22,6 +22,7 @@ class MedicationAlarmReceiver : BroadcastReceiver() {
         }
     }
 
+    // Handles the alarm event itself, including recurring rescheduling and lock-screen-safe notifications.
     private fun handleMedicationAlarm(
         context: Context,
         app: MediGuardApplication,
@@ -93,6 +94,7 @@ class MedicationAlarmReceiver : BroadcastReceiver() {
         }
     }
 
+    // Saves an intake confirmation immediately when unlocked, or defers it until unlock after reboot.
     private fun handleMarkTaken(
         context: Context,
         app: MediGuardApplication,
@@ -136,6 +138,7 @@ class MedicationAlarmReceiver : BroadcastReceiver() {
         }
     }
 
+    // Cancels the current notification and schedules a short-lived snooze alarm.
     private fun handleSnooze(app: MediGuardApplication, intent: Intent) {
         val medicationId = intent.getLongExtra(EXTRA_MEDICATION_ID, -1L)
         if (medicationId <= 0L) return
@@ -152,6 +155,7 @@ class MedicationAlarmReceiver : BroadcastReceiver() {
         )
     }
 
+    // Prevents Direct Boot code paths from touching credential-encrypted storage too early.
     private fun isUserUnlocked(context: Context): Boolean {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) return true
         return context.getSystemService(UserManager::class.java).isUserUnlocked

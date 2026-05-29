@@ -27,18 +27,22 @@ class MedicationRepository(
     val activeMedications: Flow<List<MedicationEntity>> = medicationDao.observeActiveMedications()
     val history: Flow<List<IntakeHistoryEntity>> = historyDao.observeHistory()
 
+    // Streams a single medication so detail and edit screens react to database updates.
     fun observeMedication(medicationId: Long): Flow<MedicationEntity?> {
         return medicationDao.observeMedication(medicationId)
     }
 
+    // Streams the history timeline for one medication detail screen.
     fun observeHistoryForMedication(medicationId: Long): Flow<List<IntakeHistoryEntity>> {
         return historyDao.observeHistoryForMedication(medicationId)
     }
 
+    // Loads one medication for one-off actions such as receivers and detail commands.
     suspend fun getMedication(medicationId: Long): MedicationEntity? = withContext(Dispatchers.IO) {
         medicationDao.getMedication(medicationId)
     }
 
+    // Creates the medication, mirrors minimal alarm data to Device Protected Storage, and schedules its alarm.
     suspend fun addMedication(
         name: String,
         medicationType: String,
@@ -73,6 +77,7 @@ class MedicationRepository(
         medicationId
     }
 
+    // Updates the medication definition and refreshes the alarm if the reminder is active.
     suspend fun updateMedication(
         medicationId: Long,
         name: String,
@@ -110,6 +115,7 @@ class MedicationRepository(
         true
     }
 
+    // Pauses or resumes scheduling without deleting the medication entry itself.
     suspend fun setMedicationPaused(medicationId: Long, paused: Boolean): Boolean = withContext(Dispatchers.IO) {
         val existing = medicationDao.getMedication(medicationId) ?: return@withContext false
         medicationDao.setMedicationActive(medicationId, !paused)
@@ -135,6 +141,7 @@ class MedicationRepository(
         true
     }
 
+    // Deletes the medication and removes every alarm artifact tied to it.
     suspend fun deleteMedication(medicationId: Long): Boolean = withContext(Dispatchers.IO) {
         medicationDao.getMedication(medicationId) ?: return@withContext false
         medicationDao.deleteMedication(medicationId)
@@ -143,6 +150,7 @@ class MedicationRepository(
         true
     }
 
+    // Inserts a confirmed intake row into history using the medication's current display dosage.
     suspend fun markMedicationTaken(
         medicationId: Long,
         scheduledAtMillis: Long? = null,
@@ -163,6 +171,7 @@ class MedicationRepository(
         true
     }
 
+    // Delegates the "remind me later" action to the alarm scheduler with a relative delay.
     fun snoozeMedication(medicationId: Long, scheduledAtMillis: Long, minutes: Int = 15) {
         alarmScheduler.scheduleSnoozeAlarm(
             medicationId = medicationId,
@@ -171,6 +180,7 @@ class MedicationRepository(
         )
     }
 
+    // Flushes lock-screen confirmations into Room once the user has unlocked the device.
     suspend fun reconcilePendingIntakes() = withContext(Dispatchers.IO) {
         val pending = pendingIntakeStore.getAll()
         val clearedKeys = mutableListOf<String>()
@@ -187,6 +197,7 @@ class MedicationRepository(
         pendingIntakeStore.clear(clearedKeys)
     }
 
+    // Stores only alarm metadata that is safe to read before the first user unlock after reboot.
     private fun saveDirectBootMetadata(
         medicationId: Long,
         hour: Int,
@@ -207,6 +218,7 @@ class MedicationRepository(
     }
 
     companion object {
+        // Rebuilds today's planned timestamp for status and history calculations.
         fun scheduledTimeForToday(hour: Int, minute: Int): Long {
             return Calendar.getInstance().apply {
                 set(Calendar.HOUR_OF_DAY, hour)
@@ -216,6 +228,7 @@ class MedicationRepository(
             }.timeInMillis
         }
 
+        // Lower time boundary used for "today" history and reminder lookups.
         fun startOfTodayMillis(): Long {
             return Calendar.getInstance().apply {
                 set(Calendar.HOUR_OF_DAY, 0)
@@ -225,6 +238,7 @@ class MedicationRepository(
             }.timeInMillis
         }
 
+        // Upper time boundary used for "today" history and reminder lookups.
         fun endOfTodayMillis(): Long {
             return Calendar.getInstance().apply {
                 set(Calendar.HOUR_OF_DAY, 23)

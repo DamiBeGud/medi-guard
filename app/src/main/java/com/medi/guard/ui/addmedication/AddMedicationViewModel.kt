@@ -128,6 +128,7 @@ class AddMedicationViewModel(
         _uiState.update { it.copy(reminderDayOfWeek = dayOfWeek) }
     }
 
+    // Validates the form, resolves dropdown/custom values, and persists either a new or edited medication.
     fun save() {
         val state = _uiState.value
         val resolvedMedicationType = state.resolvedMedicationType()
@@ -214,14 +215,17 @@ class AddMedicationViewModel(
         }
     }
 
+    // Clears the one-time success event after navigation or a snackbar consumed it.
     fun consumeSuccess() {
         _uiState.update { it.copy(successMessage = null, savedMedicationId = null) }
     }
 
+    // Turns the "Andere" dropdown option into the custom medication type text entered by the user.
     private fun AddMedicationUiState.resolvedMedicationType(): String {
         return if (medicationType == OTHER_OPTION) medicationTypeCustom.trim() else medicationType.trim()
     }
 
+    // Turns the "Andere" dropdown option into the custom dosage unit text entered by the user.
     private fun AddMedicationUiState.resolvedDosageUnit(): String {
         return if (dosageUnit == OTHER_OPTION) dosageUnitCustom.trim() else dosageUnit.trim()
     }
