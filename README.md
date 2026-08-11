@@ -4,6 +4,19 @@ MediGuard is a native Android medication reminder app written in Kotlin. It help
 
 The app is designed in German with a calm, accessible clinical interface for older adults.
 
+## Screenshots
+
+<table>
+  <tr>
+    <td align="center">
+      <img src="docs/images/mediguard-today-screen.png" alt="MediGuard today screen" width="280">
+    </td>
+    <td align="center">
+      <img src="docs/images/mediguard-add-medication-screen.png" alt="MediGuard add medication screen" width="280">
+    </td>
+  </tr>
+</table>
+
 ## Features
 
 - Add medication name, dosage, and reminder time
